@@ -66,7 +66,7 @@ where
         self.0.write_all(&[min])
     }
 }
-struct SerializeSeq<'serializer, W: Write + 'serializer> {
+pub struct SerializeSeq<'serializer, W: Write + 'serializer> {
     s: &'serializer mut Serializer<W>,
     first: bool,
 }
@@ -199,7 +199,7 @@ where
     }
 }
 
-struct SerializeMap<'serializer, W: Write + 'serializer> {
+pub struct SerializeMap<'serializer, W: Write + 'serializer> {
     s: &'serializer mut Serializer<W>,
     first: bool,
     wrote_closing: bool,
@@ -519,7 +519,7 @@ where
     }
 }
 
-struct SerializeStructVariant<'serializer, W: Write + 'serializer> {
+pub struct SerializeStructVariant<'serializer, W: Write + 'serializer> {
     s: &'serializer mut Serializer<W>,
     first: bool,
 }
