@@ -50,7 +50,7 @@ where
     let mut s = Serializer(writer);
     to.serialize(&mut s)
 }
-struct Serializer<W: Write>(W);
+pub struct Serializer<W: Write>(W);
 
 impl<W> BaseGenerator for Serializer<W>
 where
