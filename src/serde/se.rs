@@ -52,6 +52,12 @@ where
 }
 pub struct Serializer<W: Write>(W);
 
+impl<W: Write> Serializer<W> {
+    pub fn new(w: W) -> Self {
+        Self(w)
+    }
+}
+
 impl<W> BaseGenerator for Serializer<W>
 where
     W: Write,
