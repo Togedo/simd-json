@@ -56,6 +56,9 @@ impl<W: Write> Serializer<W> {
     pub fn new(w: W) -> Self {
         Self(w)
     }
+    pub fn into_inner(self) -> W {
+        self.0
+    }
 }
 
 impl<W> BaseGenerator for Serializer<W>
