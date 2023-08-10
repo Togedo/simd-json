@@ -5,16 +5,15 @@
     clippy::all,
     clippy::unwrap_used,
     clippy::unnecessary_unwrap,
-    clippy::pedantic
+    clippy::pedantic,
+    missing_docs
 )]
 // We might want to revisit inline_always
 #![allow(
     clippy::module_name_repetitions,
     clippy::inline_always,
-    clippy::trait_duplication_in_bounds,
-    clippy::type_repetition_in_bounds
+    renamed_and_removed_lints
 )]
-#![deny(missing_docs)]
 
 //! simd-json is a rust port of the simdjson c++ library. It follows
 //! most of the design closely with a few exceptions to make it better
@@ -217,6 +216,7 @@ use crate::sse42::stage1::{SimdInput, SIMDINPUT_LENGTH, SIMDJSON_PADDING};
 use simdutf8::basic::imp::x86::sse42::ChunkedUtf8ValidatorImp;
 
 #[cfg(all(
+    not(docsrs),
     not(feature = "allow-non-simd"),
     not(any(
         target_feature = "sse4.2",
@@ -225,7 +225,8 @@ use simdutf8::basic::imp::x86::sse42::ChunkedUtf8ValidatorImp;
         target_feature = "simd128"
     ))
 ))]
-fn please_compile_with_a_simd_compatible_cpu_setting_read_the_simdjsonrs_readme() -> ! {}
+const _: () =
+    compile_error!("Please compile with a simd compatible cpu setting, read the simdjson README.");
 
 mod stage2;
 /// simd-json JSON-DOM value
@@ -486,9 +487,13 @@ impl<'de> Deserializer<'de> {
         unsafe {
             std::ptr::copy_nonoverlapping(input.as_ptr(), input_buffer.as_mut_ptr(), len);
 
-            let to_fill = input_buffer.capacity() - len;
-            std::ptr::write_bytes(input_buffer.as_mut_ptr().add(len), 0, to_fill);
+            // initialize all remaining bytes
+            // this also ensures we have a 0 to terminate the buffer
+            for i in len..input_buffer.capacity() {
+                std::ptr::write(input_buffer.as_mut_ptr().add(i), 0);
+            }
 
+            // safety: all bytes are initialized
             input_buffer.set_len(input_buffer.capacity());
         };
 
@@ -777,12 +782,22 @@ mod tests {
     use value_trait::StaticNode;
     use value_trait::Writable;
 
+    #[cfg(not(feature = "approx-number-parsing"))]
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn alligned_number_parse() {
+        let str = "9521.824380305317";
+        let mut slice = str.as_bytes().to_owned();
+        let value: crate::BorrowedValue<'_> =
+            crate::to_borrowed_value(&mut slice).expect("failed to parse");
+        assert_eq!(value, 9_521.824_380_305_317);
+    }
+
     #[test]
     fn test_send_sync() {
         struct TestStruct<T: Sync + Send>(T);
-
         #[allow(clippy::let_underscore_drop)] // test
-        let _ = TestStruct(super::AlignedBuf::with_capacity(0));
+        let _: TestStruct<_> = TestStruct(super::AlignedBuf::with_capacity(0));
     }
 
     #[test]
@@ -1339,7 +1354,7 @@ mod tests_serde {
         assert_eq!(
             to_value(d1),
             Ok(Value::Array(vec![
-                Value::from(Object::new()),
+                Value::from(Object::default()),
                 Value::Static(StaticNode::Null)
             ]))
         );
@@ -1506,7 +1521,7 @@ mod tests_serde {
         let v_serde: serde_json::Value = serde_json::from_slice(d).expect("");
         let v_simd: serde_json::Value = from_slice(d).expect("");
         assert_eq!(v_simd, v_serde);
-        let mut h = Object::new();
+        let mut h = Object::default();
         h.insert("snot".into(), Value::from("badger"));
         assert_eq!(to_value(d1), Ok(Value::from(h)));
     }
@@ -1520,7 +1535,7 @@ mod tests_serde {
         let v_serde: serde_json::Value = serde_json::from_slice(d).expect("");
         let v_simd: serde_json::Value = from_slice(d).expect("");
         assert_eq!(v_simd, v_serde);
-        let mut h = Object::new();
+        let mut h = Object::default();
         h.insert("snot".into(), Value::from("badger"));
         h.insert("badger".into(), Value::from("snot"));
         assert_eq!(to_value(d1), Ok(Value::from(h)));

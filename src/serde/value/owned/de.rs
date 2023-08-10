@@ -1,11 +1,11 @@
 // A lot of this logic is a re-implementation or copy of serde_json::Value
-use crate::Error;
 use crate::ErrorType;
 use crate::StaticNode;
 use crate::{
     serde::value::shared::MapKeyDeserializer,
     value::owned::{Object, Value},
 };
+use crate::{Error, ObjectHasher};
 use serde_ext::{
     de::{
         self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, IntoDeserializer, MapAccess,
@@ -167,13 +167,13 @@ impl<'de> SeqAccess<'de> for ArrayRef<'de> {
     }
 }
 
-struct ObjectAccess {
-    i: halfbrown::IntoIter<String, Value>,
+struct ObjectAccess<const N: usize = 32> {
+    i: halfbrown::IntoIter<String, Value, N>,
     v: Option<Value>,
 }
 
-impl ObjectAccess {
-    fn new(i: halfbrown::IntoIter<String, Value>) -> Self {
+impl<const N: usize> ObjectAccess<N> {
+    fn new(i: halfbrown::IntoIter<String, Value, N>) -> Self {
         Self { i, v: None }
     }
 }
@@ -468,7 +468,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
     {
         let size = map.size_hint().unwrap_or_default();
 
-        let mut m = Object::with_capacity(size);
+        let mut m = Object::with_capacity_and_hasher(size, ObjectHasher::default());
         while let Some(k) = map.next_key()? {
             let v = map.next_value()?;
             m.insert(k, v);
