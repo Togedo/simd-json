@@ -21,7 +21,7 @@ use arch::{
     _mm_packus_epi32, _mm_set1_epi8, _mm_setr_epi16, _mm_setr_epi8, _mm_sub_epi8,
 };
 
-#[cfg_attr(not(feature = "no-inline"), inline(always))]
+#[cfg_attr(not(feature = "no-inline"), inline)]
 pub fn is_integer(c: u8) -> bool {
     c.is_ascii_digit()
 }
@@ -49,7 +49,7 @@ const STRUCTURAL_OR_WHITESPACE_OR_EXPONENT_OR_DECIMAL_NEGATED: [bool; 256] = [
     true, true, true, true, true, true, true,
 ];
 
-#[cfg_attr(not(feature = "no-inline"), inline(always))]
+#[cfg_attr(not(feature = "no-inline"), inline)]
 fn is_not_structural_or_whitespace_or_exponent_or_decimal(c: u8) -> bool {
     unsafe {
         *STRUCTURAL_OR_WHITESPACE_OR_EXPONENT_OR_DECIMAL_NEGATED.get_kinda_unchecked(c as usize)
@@ -109,7 +109,10 @@ fn parse_eight_digits_unrolled(chars: &[u8]) -> u32 {
 }
 
 #[cfg_attr(not(feature = "no-inline"), inline)]
-#[cfg(any(target_feature = "neon", target_feature = "simd128"))]
+#[cfg(all(
+    not(any(target_arch = "x86", target_arch = "x86_64")),
+    feature = "swar-number-parsing"
+))]
 #[allow(clippy::cast_ptr_alignment)]
 fn parse_eight_digits_unrolled(chars: &[u8]) -> u32 {
     let val = unsafe { (chars.as_ptr() as *const u64).read_unaligned() }; //    memcpy(&val, chars, sizeof(u64));
